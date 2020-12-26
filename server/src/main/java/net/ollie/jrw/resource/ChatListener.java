@@ -1,40 +1,88 @@
 package net.ollie.jrw.resource;
 
-import com.corundumstudio.socketio.Configuration;
-import com.corundumstudio.socketio.SocketIOServer;
+import com.google.common.collect.Sets;
+import org.eclipse.jetty.websocket.api.Session;
+import org.eclipse.jetty.websocket.api.WebSocketAdapter;
+import org.eclipse.jetty.websocket.api.WebSocketConnectionListener;
+import org.eclipse.jetty.websocket.servlet.ServletUpgradeRequest;
+import org.eclipse.jetty.websocket.servlet.ServletUpgradeResponse;
+import org.eclipse.jetty.websocket.servlet.WebSocketCreator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class ChatListener {
+import javax.inject.Singleton;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.CopyOnWriteArrayList;
+
+public class ChatListener extends WebSocketAdapter {
 
     private static final Logger logger = LoggerFactory.getLogger(ChatListener.class);
+    private final Set<Session> sessions;
+    private final List<String> messages;
 
-    public void runAsync(final int port) {
-
-        final var server = new SocketIOServer(this.config(port));
-
-        server.addConnectListener(socket -> {
-            logger.info("Opened socket: {}", socket);
-        });
-
-        server.addDisconnectListener(socket -> {
-            logger.info("Closed socket: {}", socket);
-        });
-
-        server.addEventListener("message", String.class, (socket, message, ackRequest) -> {
-            logger.info("Received message: {}", message);
-            server.getBroadcastOperations().sendEvent("message", message);
-        });
-
-        server.startAsync();
-
+    private ChatListener(final Set<Session> sessions, List<String> messages) {
+        this.sessions = sessions;
+        this.messages = messages;
     }
 
-    private Configuration config(final int port) {
-        final var config = new Configuration();
-        config.setHostname("localhost");
-        config.setPort(port);
-        return config;
+    @Override
+    public void onWebSocketConnect(final Session session) {
+        super.onWebSocketConnect(session);
+        logger.info("Session connected: {}", session);
+        sessions.add(session);
+        //Replay messages
+        try {
+            for (String message : messages) {
+                session.getRemote().sendString(message);
+            }
+        } catch (final Exception ex) {
+            logger.warn("Could not replay messages to session " + session, ex);
+        }
+    }
+
+    @Override
+    public void onWebSocketText(final String message) {
+        super.onWebSocketText(message);
+        logger.info("Received text: {}", message);
+        messages.add(message);
+        for (Session session : sessions) {
+            if (!session.isOpen()) continue;
+            try {
+                session.getRemote().sendString(message);
+            } catch (final Exception ex) {
+                logger.warn("Could not send message to session " + session, ex);
+            }
+        }
+    }
+
+    @Override
+    public void onWebSocketError(Throwable cause) {
+        super.onWebSocketError(cause);
+        logger.warn("Socket error:", cause);
+    }
+
+    @Override
+    public void onWebSocketClose(int statusCode, String reason) {
+        final var session = this.getSession();
+        super.onWebSocketClose(statusCode, reason);
+        logger.warn("Session closed: {}", reason);
+        if (session != null) sessions.remove(session);
+    }
+
+    @Singleton
+    public static class Factory implements WebSocketCreator {
+
+        private final Set<Session> sessions = Sets.newConcurrentHashSet();
+        private final List<String> messages = new CopyOnWriteArrayList<>();
+
+        @Override
+        public WebSocketConnectionListener createWebSocket(
+                final ServletUpgradeRequest servletUpgradeRequest,
+                final ServletUpgradeResponse servletUpgradeResponse) {
+            return new ChatListener(sessions, messages);
+        }
+
     }
 
 }

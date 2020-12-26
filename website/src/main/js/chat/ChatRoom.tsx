@@ -1,18 +1,17 @@
 import * as React from "react";
 import * as ReactDOM from "react-dom";
-import {io, Socket} from 'socket.io-client';
 
 type Props = {}
 
 type State = {
     connected?: boolean;
-    messages: []
+    messages: string[]
     message?: string;
 }
 
 class ChatRoom extends React.PureComponent<Props, State> {
 
-    private socket: Socket;
+    private socket: WebSocket;
 
     constructor(props: Props) {
         super(props);
@@ -51,21 +50,36 @@ class ChatRoom extends React.PureComponent<Props, State> {
     }
 
     componentDidMount() {
-        const socket = this.socket = io("ws://localhost:8091");
-        socket.on("connect", r => {
+        this.openSocket();
+    }
+
+    private openSocket() {
+        const socket = this.socket = new WebSocket("ws://localhost:8090/chat/subscribe");
+        socket.onopen = r => {
             console.log(r);
             this.setState({connected: true});
-        });
-        socket.on("disconnect", r => {
+        };
+        socket.onerror = r => {
             console.error(r);
             this.setState({connected: false});
-        });
-        socket.open();
+        };
+        socket.onclose = r => {
+            console.error(r);
+            this.setState({connected: false});
+        };
+        socket.onmessage = r => {
+            const message: string = r.data;
+            this.setState(current => {
+                const messages = [...current.messages];
+                messages.push(message);
+                return {messages};
+            });
+        };
     }
 
     private sendChat() {
         const message = this.state.message;
-        if (message != null) this.socket.emit("message", message);
+        if (message != null) this.socket.send(message);
         this.setState({message: ""});
     }
 
