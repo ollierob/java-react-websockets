@@ -6,8 +6,8 @@
 </head>
 
 <body>
-    <%= htmlWebpackPlugin.tags.bodyTags %>
     <div id="main"></div>
+    <%= htmlWebpackPlugin.tags.bodyTags %>
 </body>
 
 </html>
