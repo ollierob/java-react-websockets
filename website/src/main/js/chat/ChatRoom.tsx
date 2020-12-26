@@ -1,11 +1,13 @@
 import * as React from "react";
 import * as ReactDOM from "react-dom";
+import "./Chat.css";
+import {ChatMessage} from "../../protobuf/chat_pb";
 
 type Props = {}
 
 type State = {
     connected?: boolean;
-    messages: string[]
+    messages: ChatMessage.AsObject[]
     message?: string;
     username?: string;
 }
@@ -16,7 +18,10 @@ class ChatRoom extends React.PureComponent<Props, State> {
 
     constructor(props: Props) {
         super(props);
-        this.state = {messages: []};
+        this.state = {
+            username: "default",
+            messages: []
+        };
     }
 
     render() {
@@ -26,7 +31,7 @@ class ChatRoom extends React.PureComponent<Props, State> {
             {!this.state.connected && <div>Connecting ...</div>}
 
             <ul className="messages">
-                {this.state.messages.map(m => <li>{m}</li>)}
+                {this.state.messages.map(m => <Message key={m.id} message={m}/>)}
             </ul>
 
             <form onSubmit={e => {
@@ -57,7 +62,7 @@ class ChatRoom extends React.PureComponent<Props, State> {
     private openSocket() {
         let socket = this.socket;
         if (socket != null) socket.close();
-        socket = this.socket = new WebSocket("ws://localhost:8090/chat/subscribe?user=" + this.state.username);
+        socket = this.socket = new WebSocket("ws://localhost:8090/chat/subscribe?username=" + this.state.username);
         socket.onopen = r => {
             console.log(r);
             this.setState({connected: true});
@@ -75,11 +80,16 @@ class ChatRoom extends React.PureComponent<Props, State> {
             setTimeout(() => this.openSocket(), 2000);
         };
         socket.onmessage = r => {
-            const message: string = r.data;
-            this.setState(current => {
-                const messages = [...current.messages];
-                messages.push(message);
-                return {messages};
+            const data: Blob = r.data;
+            data.arrayBuffer().then(buff => {
+                const array = new Uint8Array(buff);
+                if (!array.byteLength) return;
+                const message = ChatMessage.deserializeBinary(array).toObject();
+                this.setState(current => {
+                    const messages = [...current.messages];
+                    messages.push(message);
+                    return {messages};
+                });
             });
         };
     }
@@ -91,5 +101,13 @@ class ChatRoom extends React.PureComponent<Props, State> {
     }
 
 }
+
+const Message = (props: {message: ChatMessage.AsObject}) => {
+    const message = props.message;
+    return <li>
+        <span className="username">{message.user}</span>
+        <span className="message">{message.message}</span>
+    </li>;
+};
 
 ReactDOM.render(<ChatRoom/>, document.getElementById("main"));

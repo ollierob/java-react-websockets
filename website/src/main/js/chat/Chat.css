@@ -1,0 +1,18 @@
+.chat .messages {
+
+}
+
+.chat .messages ul {
+    padding: 0;
+}
+
+.chat .messages li {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+}
+
+.chat .messages .username {
+    color: #aaa;
+    padding-right: 4px;
+}
