@@ -7,6 +7,7 @@ type State = {
     connected?: boolean;
     messages: string[]
     message?: string;
+    username?: string;
 }
 
 class ChatRoom extends React.PureComponent<Props, State> {
@@ -56,7 +57,7 @@ class ChatRoom extends React.PureComponent<Props, State> {
     private openSocket() {
         let socket = this.socket;
         if (socket != null) socket.close();
-        socket = this.socket = new WebSocket("ws://localhost:8090/chat/subscribe");
+        socket = this.socket = new WebSocket("ws://localhost:8090/chat/subscribe?user=" + this.state.username);
         socket.onopen = r => {
             console.log(r);
             this.setState({connected: true});
@@ -65,13 +66,13 @@ class ChatRoom extends React.PureComponent<Props, State> {
             console.error(r);
             this.setState({connected: false});
             //Auto-reconnect
-            setTimeout(() => this.openSocket(), 1000);
+            setTimeout(() => this.openSocket(), 2000);
         };
         socket.onclose = r => {
             console.error(r);
             this.setState({connected: false});
             //Auto-reconnect
-            setTimeout(() => this.openSocket(), 1000);
+            setTimeout(() => this.openSocket(), 2000);
         };
         socket.onmessage = r => {
             const message: string = r.data;
