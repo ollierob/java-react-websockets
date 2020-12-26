@@ -11,7 +11,10 @@
         <logger name="org.eclipse.jetty" level="error" additivity="false">
             <appenderref ref="STDOUT"/>
         </logger>
-        <root level="warn">
+        <logger name="io.netty" level="error" additivity="false">
+            <appenderref ref="STDOUT"/>
+        </logger>
+        <root level="info">
             <appenderref ref="STDOUT"/>
         </root>
     </loggers>

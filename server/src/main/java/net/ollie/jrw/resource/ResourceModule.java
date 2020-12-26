@@ -7,8 +7,8 @@ public class ResourceModule extends AbstractModule {
     @Override
     protected void configure() {
         super.configure();
-        this.bind(ChatResource.class);
         this.bind(JavascriptResource.class);
+        this.bind(ChatResource.class);
     }
 
 }
