@@ -54,7 +54,9 @@ class ChatRoom extends React.PureComponent<Props, State> {
     }
 
     private openSocket() {
-        const socket = this.socket = new WebSocket("ws://localhost:8090/chat/subscribe");
+        let socket = this.socket;
+        if (socket != null) socket.close();
+        socket = this.socket = new WebSocket("ws://localhost:8090/chat/subscribe");
         socket.onopen = r => {
             console.log(r);
             this.setState({connected: true});
@@ -62,10 +64,14 @@ class ChatRoom extends React.PureComponent<Props, State> {
         socket.onerror = r => {
             console.error(r);
             this.setState({connected: false});
+            //Auto-reconnect
+            setTimeout(() => this.openSocket(), 1000);
         };
         socket.onclose = r => {
             console.error(r);
             this.setState({connected: false});
+            //Auto-reconnect
+            setTimeout(() => this.openSocket(), 1000);
         };
         socket.onmessage = r => {
             const message: string = r.data;
