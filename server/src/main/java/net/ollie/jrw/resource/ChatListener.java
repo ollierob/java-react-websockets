@@ -21,7 +21,7 @@ public class ChatListener extends WebSocketAdapter {
     private final Set<Session> sessions;
     private final List<String> messages;
 
-    private ChatListener(final Set<Session> sessions, List<String> messages) {
+    private ChatListener(final Set<Session> sessions, final List<String> messages) {
         this.sessions = sessions;
         this.messages = messages;
     }
@@ -33,7 +33,7 @@ public class ChatListener extends WebSocketAdapter {
         sessions.add(session);
         //Replay messages
         try {
-            for (String message : messages) {
+            for (final String message : messages) {
                 session.getRemote().sendString(message);
             }
         } catch (final Exception ex) {
@@ -46,8 +46,13 @@ public class ChatListener extends WebSocketAdapter {
         super.onWebSocketText(message);
         logger.info("Received text: {}", message);
         messages.add(message);
-        for (Session session : sessions) {
-            if (!session.isOpen()) continue;
+        for (final var iterator = sessions.iterator(); iterator.hasNext(); ) {
+            final var session = iterator.next();
+            if (!session.isOpen()) {
+                //Tidy up
+                iterator.remove();
+                continue;
+            }
             try {
                 session.getRemote().sendString(message);
             } catch (final Exception ex) {
@@ -57,17 +62,17 @@ public class ChatListener extends WebSocketAdapter {
     }
 
     @Override
-    public void onWebSocketError(Throwable cause) {
+    public void onWebSocketError(final Throwable cause) {
         super.onWebSocketError(cause);
         logger.warn("Socket error:", cause);
     }
 
     @Override
-    public void onWebSocketClose(int statusCode, String reason) {
+    public void onWebSocketClose(final int statusCode, final String reason) {
         final var session = this.getSession();
+        if (session != null) sessions.remove(session);
         super.onWebSocketClose(statusCode, reason);
         logger.warn("Session closed: {}", reason);
-        if (session != null) sessions.remove(session);
     }
 
     @Singleton
