@@ -20,6 +20,13 @@ import javax.servlet.DispatcherType;
 import javax.servlet.Servlet;
 import java.util.EnumSet;
 
+/**
+ * Runs a Jetty server.
+ * <p>
+ * Regular HTTP endpoints are bound with Guice.
+ * <p>
+ * WebSocket endpoints are manually installed here.
+ */
 public class Server {
 
     private static final Logger logger = LoggerFactory.getLogger(Server.class);
@@ -28,7 +35,7 @@ public class Server {
     private final ChatListener.Factory listenerFactory;
 
     @Inject
-    Server(final GuiceResteasyBootstrapServletContextListener contextListener, ChatListener.Factory listenerFactory) {
+    Server(final GuiceResteasyBootstrapServletContextListener contextListener, final ChatListener.Factory listenerFactory) {
         this.contextListener = contextListener;
         this.listenerFactory = listenerFactory;
     }
@@ -79,7 +86,7 @@ public class Server {
             final var injector = Guice.createInjector(new ServerModule());
             //Run Jetty thread
             injector.getInstance(Server.class).run(args.length > 0 ? Integer.parseInt(args[0]) : 8090);
-        } catch (Exception e) {
+        } catch (final Exception e) {
             logger.error("Error running server", e);
             System.exit(-1);
         }

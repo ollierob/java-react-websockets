@@ -17,6 +17,9 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 
+/**
+ * Websocket adapter for chat messages.
+ */
 public class ChatListener extends WebSocketAdapter {
 
     private static final Logger logger = LoggerFactory.getLogger(ChatListener.class);

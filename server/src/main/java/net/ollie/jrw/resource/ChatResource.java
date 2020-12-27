@@ -7,6 +7,9 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
+/**
+ * Serves up chat.html file.
+ */
 @Path("chat")
 public class ChatResource {
 
