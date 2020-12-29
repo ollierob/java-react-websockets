@@ -3,8 +3,11 @@ package net.ollie.jrw.resource;
 import com.google.common.collect.Sets;
 import net.ollie.jrw.ChatProto;
 import org.eclipse.jetty.websocket.api.Session;
-import org.eclipse.jetty.websocket.api.WebSocketAdapter;
-import org.eclipse.jetty.websocket.api.WebSocketConnectionListener;
+import org.eclipse.jetty.websocket.api.annotations.OnWebSocketClose;
+import org.eclipse.jetty.websocket.api.annotations.OnWebSocketConnect;
+import org.eclipse.jetty.websocket.api.annotations.OnWebSocketError;
+import org.eclipse.jetty.websocket.api.annotations.OnWebSocketMessage;
+import org.eclipse.jetty.websocket.api.annotations.WebSocket;
 import org.eclipse.jetty.websocket.servlet.ServletUpgradeRequest;
 import org.eclipse.jetty.websocket.servlet.ServletUpgradeResponse;
 import org.eclipse.jetty.websocket.servlet.WebSocketCreator;
@@ -20,7 +23,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
 /**
  * Websocket adapter for chat messages.
  */
-public class ChatListener extends WebSocketAdapter {
+@WebSocket
+public class ChatListener {
 
     private static final Logger logger = LoggerFactory.getLogger(ChatListener.class);
     private final String username;
@@ -36,9 +40,8 @@ public class ChatListener extends WebSocketAdapter {
         this.messages = messages;
     }
 
-    @Override
+    @OnWebSocketConnect
     public void onWebSocketConnect(final Session session) {
-        super.onWebSocketConnect(session);
         logger.info("Session connected: {}", session);
         sessions.add(session);
         //Replay messages
@@ -52,10 +55,9 @@ public class ChatListener extends WebSocketAdapter {
         }
     }
 
-    @Override
-    public void onWebSocketText(final String message) {
-        super.onWebSocketText(message);
-        logger.info("Received text: {}", message);
+    @OnWebSocketMessage
+    public void onWebSocketText(final Session sourceSession, final String message) {
+        logger.info("Received text from {}: {}", sourceSession, message);
         final var proto = createMessage(message);
         messages.add(proto);
         for (final var iterator = sessions.iterator(); iterator.hasNext(); ) {
@@ -81,17 +83,14 @@ public class ChatListener extends WebSocketAdapter {
                 .build();
     }
 
-    @Override
-    public void onWebSocketError(final Throwable cause) {
-        super.onWebSocketError(cause);
+    @OnWebSocketError
+    public void onWebSocketError(final Session session, final Throwable cause) {
         logger.warn("Socket error:", cause);
     }
 
-    @Override
-    public void onWebSocketClose(final int statusCode, final String reason) {
-        final var session = this.getSession();
+    @OnWebSocketClose
+    public void onWebSocketClose(final Session session, final int statusCode, final String reason) {
         if (session != null) sessions.remove(session);
-        super.onWebSocketClose(statusCode, reason);
         logger.warn("Session closed: {}", reason);
     }
 
@@ -102,7 +101,7 @@ public class ChatListener extends WebSocketAdapter {
         private final List<ChatProto.ChatMessage> messages = new CopyOnWriteArrayList<>();
 
         @Override
-        public WebSocketConnectionListener createWebSocket(
+        public Object createWebSocket(
                 final ServletUpgradeRequest request,
                 final ServletUpgradeResponse response) {
             final var users = request.getParameterMap().get("username");
