@@ -92,13 +92,13 @@ public class ChatListener {
 
     @OnWebSocketError
     public void onWebSocketError(final Session session, final Throwable cause) {
-        logger.warn("Socket error:", cause);
+        logger.warn("Socket error on session " + session, cause);
     }
 
     @OnWebSocketClose
     public void onWebSocketClose(final Session session, final int statusCode, final String reason) {
         if (session != null) sessions.remove(session);
-        logger.warn("Session closed: {}", reason);
+        logger.warn("Session {} closed: {}", session, reason);
     }
 
     @Singleton
