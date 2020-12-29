@@ -60,9 +60,11 @@ class ChatRoom extends React.PureComponent<Props, State> {
     }
 
     private openSocket() {
-        let socket = this.socket;
-        if (socket != null) socket.close();
-        socket = this.socket = new WebSocket("ws://localhost:8090/chat/subscribe?username=" + this.state.username);
+        if (this.socket != null) {
+            this.socket.close(4000);
+            this.socket = null;
+        }
+        const socket = new WebSocket("ws://localhost:8090/chat/subscribe?username=" + this.state.username);
         socket.onopen = r => {
             console.log(r);
             this.setState({connected: true});
@@ -70,14 +72,12 @@ class ChatRoom extends React.PureComponent<Props, State> {
         socket.onerror = r => {
             console.error(r);
             this.setState({connected: false});
-            //Auto-reconnect
-            setTimeout(() => this.openSocket(), 2000);
         };
         socket.onclose = r => {
             console.error(r);
             this.setState({connected: false});
             //Auto-reconnect
-            setTimeout(() => this.openSocket(), 2000);
+            if (r.code != 4000) setTimeout(() => this.openSocket(), 2000);
         };
         socket.onmessage = r => {
             const data: Blob = r.data;
@@ -92,6 +92,7 @@ class ChatRoom extends React.PureComponent<Props, State> {
                 });
             });
         };
+        this.socket = socket;
     }
 
     private sendChat() {
