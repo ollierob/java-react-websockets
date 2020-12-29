@@ -70,11 +70,11 @@ class ChatRoom extends React.PureComponent<Props, State> {
             this.setState({connected: true});
         };
         socket.onerror = r => {
-            console.error(r);
+            console.error("Socket error:" + r);
             this.setState({connected: false});
         };
         socket.onclose = r => {
-            console.error(r);
+            console.error("Socket closed:" + r);
             this.setState({connected: false});
             //Auto-reconnect
             if (r.code != 4000) setTimeout(() => this.openSocket(), 2000);
