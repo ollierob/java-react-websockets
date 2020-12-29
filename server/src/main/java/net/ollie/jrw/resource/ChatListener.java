@@ -98,13 +98,13 @@ public class ChatListener {
 
         private final Set<Session> sessions = Sets.newConcurrentHashSet();
         private final List<ChatProto.ChatMessage> messages = new CopyOnWriteArrayList<>();
-        private final ChatListener statelessListener = new ChatListener(sessions, messages);
+        private final ChatListener listener = new ChatListener(sessions, messages);
 
         @Override
         public Object createWebSocket(
                 final ServletUpgradeRequest request,
                 final ServletUpgradeResponse response) {
-            return statelessListener;
+            return listener;
         }
 
     }
