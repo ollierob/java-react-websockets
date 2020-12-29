@@ -1,6 +1,7 @@
 package net.ollie.jrw.resource;
 
 import com.google.common.collect.Sets;
+import com.google.protobuf.CodedOutputStream;
 import net.ollie.jrw.ChatProto;
 import org.eclipse.jetty.websocket.api.Session;
 import org.eclipse.jetty.websocket.api.annotations.OnWebSocketClose;
@@ -15,6 +16,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Singleton;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -44,8 +47,7 @@ public class ChatListener {
         //Replay messages
         try {
             for (final ChatProto.ChatMessage message : messages) {
-                //TODO re-use buffer
-                session.getRemote().sendBytes(message.toByteString().asReadOnlyByteBuffer());
+                send(message, session);
             }
         } catch (final Exception ex) {
             logger.warn("Could not replay messages to session " + session, ex);
@@ -53,10 +55,10 @@ public class ChatListener {
     }
 
     @OnWebSocketMessage
-    public void onWebSocketText(final Session sourceSession, final String message) {
-        logger.info("Received text from {}: {}", sourceSession, message);
-        final var proto = createMessage(sourceSession, message);
-        messages.add(proto);
+    public void onWebSocketText(final Session sourceSession, final String messageText) {
+        logger.info("Received text from {}: {}", sourceSession, messageText);
+        final var message = createMessage(sourceSession, messageText);
+        messages.add(message);
         for (final var iterator = sessions.iterator(); iterator.hasNext(); ) {
             final var session = iterator.next();
             if (!session.isOpen()) {
@@ -65,11 +67,17 @@ public class ChatListener {
                 continue;
             }
             try {
-                session.getRemote().sendBytes(proto.toByteString().asReadOnlyByteBuffer());
+                send(message, session);
             } catch (final Exception ex) {
                 logger.warn("Could not send message to session " + session, ex);
             }
         }
+    }
+
+    private static void send(final ChatProto.ChatMessage message, final Session session) throws IOException {
+        final ByteBuffer bb = ByteBuffer.allocateDirect(message.getSerializedSize());
+        message.writeTo(CodedOutputStream.newInstance(bb));
+        session.getRemote().sendBytes(bb);
     }
 
     private static ChatProto.ChatMessage createMessage(final Session session, final String message) {
