@@ -27,15 +27,12 @@ import java.util.concurrent.CopyOnWriteArrayList;
 public class ChatListener {
 
     private static final Logger logger = LoggerFactory.getLogger(ChatListener.class);
-    private final String username;
     private final Set<Session> sessions;
     private final List<ChatProto.ChatMessage> messages;
 
     private ChatListener(
-            final String username,
             final Set<Session> sessions,
             final List<ChatProto.ChatMessage> messages) {
-        this.username = username;
         this.sessions = sessions;
         this.messages = messages;
     }
@@ -58,7 +55,7 @@ public class ChatListener {
     @OnWebSocketMessage
     public void onWebSocketText(final Session sourceSession, final String message) {
         logger.info("Received text from {}: {}", sourceSession, message);
-        final var proto = createMessage(message);
+        final var proto = createMessage(sourceSession, message);
         messages.add(proto);
         for (final var iterator = sessions.iterator(); iterator.hasNext(); ) {
             final var session = iterator.next();
@@ -75,10 +72,12 @@ public class ChatListener {
         }
     }
 
-    private ChatProto.ChatMessage createMessage(final String message) {
+    private static ChatProto.ChatMessage createMessage(final Session session, final String message) {
+        final var users = session.getUpgradeRequest().getParameterMap().get("username");
+        final var user = users == null || users.size() != 1 ? "?" : users.get(0);
         return ChatProto.ChatMessage.newBuilder()
                 .setId(UUID.randomUUID().toString())
-                .setUser(username)
+                .setUser(user)
                 .setMessage(message)
                 .build();
     }
@@ -99,14 +98,13 @@ public class ChatListener {
 
         private final Set<Session> sessions = Sets.newConcurrentHashSet();
         private final List<ChatProto.ChatMessage> messages = new CopyOnWriteArrayList<>();
+        private final ChatListener statelessListener = new ChatListener(sessions, messages);
 
         @Override
         public Object createWebSocket(
                 final ServletUpgradeRequest request,
                 final ServletUpgradeResponse response) {
-            final var users = request.getParameterMap().get("username");
-            final var user = users == null || users.size() != 1 ? "?" : users.get(0);
-            return new ChatListener(user, sessions, messages);
+            return statelessListener;
         }
 
     }
